@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/stkhr/study-go-gRPC/greet/greetpb"
 	"google.golang.org/grpc"
 	"log"
@@ -11,6 +12,7 @@ import (
 type server struct{}
 
 func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) {
+	fmt.Printf("[DEBUG] request: %v \n", req)
 	firstName := req.GetGreeting().GetFirstName()
 	result := "Hello " + firstName
 	res := &greetpb.GreetResponse{
