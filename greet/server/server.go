@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/stkhr/study-go-gRPC/greet/greetpb"
 	"google.golang.org/grpc"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -24,7 +25,7 @@ func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.G
 }
 
 func (*server) GreetManyTimes(req *greetpb.GreetManyTimesRequest, stream greetpb.GreetService_GreetManyTimesServer) error {
-	fmt.Printf("[DEBUG] stream request: %v \n", req)
+	fmt.Printf("[DEBUG] server stream request: %v \n", req)
 	firstName := req.GetGreeting().GetFirstName()
 	for i := 0; i < 10; i++ {
 		result := "Hello " + firstName + "number " + strconv.Itoa(i)
@@ -35,6 +36,27 @@ func (*server) GreetManyTimes(req *greetpb.GreetManyTimesRequest, stream greetpb
 		time.Sleep(1000 * time.Millisecond)
 	}
 	return nil
+}
+
+func (*server) LongGreet(stream greetpb.GreetService_LongGreetServer) error {
+	fmt.Printf("[DEBUG] client stream request")
+	result := ""
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			// web have finished reading the client stream
+			return stream.SendAndClose(&greetpb.LongGreetResponse{
+				Result: result,
+			})
+		}
+		if err != nil {
+			log.Fatalf("[Error] cannot read client stream")
+		}
+
+		firstName := req.GetGreeting().GetFirstName()
+		result += "Hello " + firstName + "! "
+	}
+
 }
 
 func main() {
