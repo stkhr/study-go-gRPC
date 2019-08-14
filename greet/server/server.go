@@ -59,6 +59,29 @@ func (*server) LongGreet(stream greetpb.GreetService_LongGreetServer) error {
 
 }
 
+func (*server) GreetEveryone(stream greetpb.GreetService_GreetEveryoneServer) error {
+	fmt.Printf("[DEBUG] bidi stream request")
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("[Error] cannot read bidi stream: %v", err)
+		}
+		firstName := req.GetGreeting().GetFirstName()
+		result := "Hello" + firstName + "! "
+		err = stream.Send(&greetpb.GreetEveryoneResponse{
+			Result: result,
+		})
+		if err != nil {
+			log.Fatalf("[ERROR] failed to send data to client: %v", err)
+			return err
+		}
+	}
+}
+
 func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
