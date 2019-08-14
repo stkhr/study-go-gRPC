@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/stkhr/study-go-gRPC/greet/greetpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"time"
@@ -53,7 +55,16 @@ func doServerStreaming(c greetpb.GreetServiceClient) {
 			LastName:  "hoge2",
 		},
 	}
-	res, err := c.GreetManyTimes(context.Background(), req)
+
+	// no deadline
+	// ctx := context.Background()
+
+	// deadline
+	//ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	res, err := c.GreetManyTimes(ctx, req)
 	if err != nil {
 		log.Fatalf("[ERROR] error with calling GreetManyTimes: %v", err)
 	}
@@ -64,7 +75,17 @@ func doServerStreaming(c greetpb.GreetServiceClient) {
 			// reached the end of stream
 			break
 		} else if err != nil {
-			log.Fatalf("[ERROR] error with reading stream: %v", err)
+			//log.Fatalf("[ERROR] error with reading stream: %v", err)
+			statusErr, ok := status.FromError(err)
+			if ok {
+				if statusErr.Code() == codes.DeadlineExceeded {
+					log.Fatalf("Timeout was hit! deadline exceeded: %v, %v", statusErr.Message(), statusErr.Code())
+				} else {
+					log.Fatalf("unexpected error: %v\n", statusErr)
+				}
+			} else {
+				log.Fatalf("[ERROR] failed to call GreetManyTimes: %v", err)
+			}
 		} else {
 			log.Printf("[INFO] response: %v", msg.GetResult())
 		}
