@@ -71,7 +71,7 @@ func (*server) GreetEveryone(stream greetpb.GreetService_GreetEveryoneServer) er
 			log.Fatalf("[Error] cannot read bidi stream: %v", err)
 		}
 		firstName := req.GetGreeting().GetFirstName()
-		result := "Hello" + firstName + "! "
+		result := "Hello " + firstName + "! "
 		err = stream.Send(&greetpb.GreetEveryoneResponse{
 			Result: result,
 		})

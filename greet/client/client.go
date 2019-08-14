@@ -25,6 +25,8 @@ func main() {
 	doServerStreaming(c)
 
 	doClientStreaming(c)
+
+	doBiDiStreaming(c)
 }
 
 func doUnary(c greetpb.GreetServiceClient) {
@@ -74,34 +76,14 @@ func doClientStreaming(c greetpb.GreetServiceClient) {
 	fmt.Println("[INFO] starting client streaming")
 
 	requests := []*greetpb.LongGreetRequest{
-		{
+		&greetpb.LongGreetRequest{
 			Greeting: &greetpb.Greeting{
 				FirstName: "fuga1",
 			},
 		},
-		{
+		&greetpb.LongGreetRequest{
 			Greeting: &greetpb.Greeting{
 				FirstName: "fuga2",
-			},
-		},
-		{
-			Greeting: &greetpb.Greeting{
-				FirstName: "fuga3",
-			},
-		},
-		{
-			Greeting: &greetpb.Greeting{
-				FirstName: "fuga4",
-			},
-		},
-		{
-			Greeting: &greetpb.Greeting{
-				FirstName: "fuga5",
-			},
-		},
-		{
-			Greeting: &greetpb.Greeting{
-				FirstName: "fuga6",
 			},
 		},
 	}
@@ -112,7 +94,7 @@ func doClientStreaming(c greetpb.GreetServiceClient) {
 	}
 
 	for _, req := range requests {
-		fmt.Println("[INFO] Sending request: %v\n", req)
+		fmt.Printf("[INFO] Sending request: %v\n", req)
 		stream.Send(req)
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -123,4 +105,70 @@ func doClientStreaming(c greetpb.GreetServiceClient) {
 	}
 	fmt.Printf("[INFO] LongGreet Response: %v\n", res)
 
+}
+
+func doBiDiStreaming(c greetpb.GreetServiceClient) {
+	fmt.Println("[INFO] starting bidi streaming")
+
+	// create stream
+	stream, err := c.GreetEveryone(context.Background())
+	if err != nil {
+		log.Fatalf("[ERROR] failed to create stream: %v", err)
+		return
+	}
+
+	requests := []*greetpb.GreetEveryoneRequest{
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "fuga1",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "fuga2",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "fuga3",
+			},
+		},
+		&greetpb.GreetEveryoneRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "fuga4",
+			},
+		},
+	}
+
+	waitc := make(chan struct{})
+
+	// send a bunch of messages
+	go func() {
+		// function to send a bunch of message
+		for _, req := range requests {
+			fmt.Printf("sending messages: %v\n", req)
+			stream.Send(req)
+			time.Sleep(1000 * time.Millisecond)
+		}
+		stream.CloseSend()
+	}()
+
+	// receive a bunch of messages
+	go func() {
+		// function to receive a bunch of message
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("[ERROR] failed to receive stram: %v", err)
+				break
+			}
+			fmt.Printf("received: %v\n", res.GetResult())
+		}
+		close(waitc)
+	}()
+	// block until everything is done
+	<-waitc
 }
