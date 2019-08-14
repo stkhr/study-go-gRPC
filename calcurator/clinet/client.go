@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/stkhr/study-go-gRPC/calcurator/calcpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"time"
@@ -24,6 +26,8 @@ func main() {
 	doServerStreaming(c)
 	doClientStreaming(c)
 	doBiDiStreaming(c)
+
+	doError(c)
 }
 
 func doUnary(c calcpb.CalculatorServiceClient) {
@@ -125,4 +129,25 @@ func doBiDiStreaming(c calcpb.CalculatorServiceClient) {
 		close(waitc)
 	}()
 	<-waitc
+}
+
+func doError(c calcpb.CalculatorServiceClient) {
+	fmt.Println("[INFO] starting example of error")
+	number := int32(-25)
+	res, err := c.SquareRoot(context.Background(), &calcpb.SquareRootRequest{
+		Number: number,
+	})
+	if err != nil {
+		respErr, ok := status.FromError(err)
+		if ok {
+			fmt.Println(respErr.Message())
+			fmt.Println(respErr.Code())
+			if respErr.Code() == codes.InvalidArgument {
+				fmt.Println("probably sent a negative number!")
+			}
+		} else {
+			log.Fatalf("[ERROR] failed to call SquareRoot: %v", err)
+		}
+	}
+	fmt.Printf("Resulet of square root of %v : %v", number, res.GetNumberRoot())
 }
